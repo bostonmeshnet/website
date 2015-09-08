@@ -5,6 +5,10 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Mail;
 use App\Email as Email;
+// use GuzzleHttp\Client as Client;
+// use GuzzleHttp\Promise;
+// use GuzzleHttp\Psr7\Request;
+
 use Validator;
 use App\Http\Requests;
 use App\Http\Controllers\Controller;
@@ -77,8 +81,8 @@ class EmailController extends Controller
             error_log(json_encode([ 'mailer' => [ 'newEmail' => $Mailer ]]));
 
             // soon
-            // $Scribe = $this->subscribe($Mailer->email); // soon
-
+            $Scribe = $this->subscribe($Mailer->email); // soon
+            error_log(json_encode(['scribe' => $Scribe]));
             $Mailer->save();
 
             return response()->json([ 'success' => true ])
@@ -97,7 +101,54 @@ class EmailController extends Controller
     public function subscribe($email)
     {
 
-       return [ 'success' => $email ];
+        $base_uri = 'https://lists.projectmesh.net/cgi-bin/mailman/subscribe/boston';
+
+        $client = new \Guzzle\Service\Client([
+            'base_uri' => 'https://lists.projectmesh.net/cgi-bin/mailman/subscribe/boston',
+            'timeout'  => 7,
+        ]);
+
+        $randStrng = str_random(12);
+        error_log(json_encode(['$randStrng' => $randStrng]));
+
+        $request = $client->post($base_uri, [
+                        'content-type' => 'application/x-www-form-urlencoded'
+                    ],[]);
+
+        $data = [
+            'email'   => $email,
+            'pw'      => $randStrng,
+            'pw-conf' => $randStrng,
+            'digest'  => 0,
+            'email-button' => 'Subscribe',
+        ];
+
+        $request->setBody($data);
+        $response = $request->send();
+
+        /* Pending mailserver install..
+
+        $data = (object) [
+                    'lists'   => 'boston-join@lists.projectmesh.net',
+                    'lists_public' => 'boston@lists.projectmesh.net',
+                    'from'    => $email,
+                    'subject' => 'Mailing List Request from Boston Meshnet (via Bostonmesh.net Website)',
+                    'artisan' => 'igel@hyperboria.ca',
+                ] ;
+
+        $success = Mail::send('emails.subscribe', [ 'data' => $data ], function ($message) use($data) {
+            $message->from($data->from);
+            $message->to($data->lists)
+                        ->cc($data->artisan)
+                        ->cc($data->from)
+                        ->subject($data->subject);
+        });
+
+        error_log(json_encode(['subscribe' => $success]));
+        */
+
+        $success = true;
+        return [ 'success' => $success ];
 
     }
 
