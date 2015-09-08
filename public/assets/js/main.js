@@ -110,8 +110,10 @@
 			// Vars.
 				var $form = document.querySelectorAll('#signup-form')[0],
 					$submit = document.querySelectorAll('#signup-form input[type="submit"]')[0],
-					$message;
-
+					$message, $messageTimeout,
+					// email in textbox post
+					$email = document.querySelectorAll('#signup-form input[id="email"]')[0],
+					$token = document.querySelectorAll('#signup-form input[name="_token"]')[0];
 			// Bail if addEventListener isn't supported.
 				if (!('addEventListener' in $form))
 					return;
@@ -141,6 +143,14 @@
 			// Note: If you're *not* using AJAX, get rid of this event listener.
 				$form.addEventListener('submit', function(event) {
 
+					$messageTimeout = window.setTimeout(function() {
+						$message._show('failure', 'Something went wrong. '
+												+ 'Please try again. Code: 419');
+					}, 4000);
+
+					var $subscriber = $email.value;
+					var $csrf_token = $token.value;
+
 					event.stopPropagation();
 					event.preventDefault();
 
@@ -149,11 +159,33 @@
 
 					// Disable submit.
 						$submit.disabled = true;
+					// /api/list/new
+
+					var url = '/api/list/new';
+					var data = { _token: $csrf_token, email: $subscriber };
+					var xhr = new XMLHttpRequest();
+
+					xhr.open('POST', url);
+					xhr.setRequestHeader('Content-Type', 'application/json');
 
 					// Process form.
-					// Note: Doesn't actually do anything yet (other than report back with a "thank you"),
-					// but there's enough here to piece together a working AJAX submission call that does.
-						window.setTimeout(function() {
+					xhr.onload = function() {
+						clearTimeout($messageTimeout);
+
+						var $response = JSON.parse(xhr.response);
+						var $oops = 'Oops.. Something went wrong. '
+									+ 'Please try again. <br>'
+									+ $response.error + ' (' + xhr.status + ')'
+						//
+
+						if ((xhr.status !== 200) || ($response.error)) {
+
+							$message.classList.remove('success');
+							$message._show('failure', $oops);
+
+							$submit.disabled = false;
+
+						} else if ($response.success) { // {"success":true}
 
 							// Reset form.
 								$form.reset();
@@ -161,11 +193,26 @@
 							// Enable submit.
 								$submit.disabled = false;
 
-							// Show message.
-								$message._show('success', 'Thank you!');
-								//$message._show('failure', 'Something went wrong. Please try again.');
+							// Remove stale class
+								$message.classList.remove('failure');
 
-						}, 750);
+							// Show message.
+								$message._show('success', 'Thank you! '
+											+ 'Please check your E-mail <br>'
+											+ $subscriber);
+						} else {
+
+							$message.classList.remove('success');
+							$message._show('failure', $oops);
+
+							$submit.disabled = false;
+
+						}
+					};
+
+					xhr.send(JSON.stringify({ email: $subscriber, _token: $csrf_token }));
+
+
 
 				});
 

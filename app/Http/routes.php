@@ -15,7 +15,7 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::post('/api/list/new', 'ApiController@store');
+Route::post('/api/list/new', 'EmailController@store');
 
 Route::get('/mailing-list/success', function () {
     // Fallback for non-ajax form posts
